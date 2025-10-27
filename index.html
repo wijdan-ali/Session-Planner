@@ -265,6 +265,88 @@
                 gap: 10px;
             }
         }
+        
+        /* Instructions modal styles */
+        .instructions-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100px;
+            height: 44px;
+            border-radius: 20px;
+            background: linear-gradient(135deg,#fff 0%, #f1f5f9 100%);
+            border: 2px solid rgba(16,24,40,0.06);
+            color: #e53e3e;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(16,24,40,0.06);
+            transition: transform 180ms ease, box-shadow 180ms ease;
+        }
+
+        .instructions-button:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(16,24,40,0.08); }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.36);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 240ms ease, visibility 240ms;
+            z-index: 1200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-backdrop.is-open { opacity: 1; visibility: visible; }
+
+        .instructions-modal {
+            width: 100%;
+            max-width: 720px;
+            background: linear-gradient(180deg,#ffffff 0%, #fbfdff 100%);
+            border-radius: 14px;
+            box-shadow: 0 20px 50px rgba(2,6,23,0.2);
+            transform: translateY(-8px) scale(0.98);
+            opacity: 0;
+            transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 260ms ease;
+            position: relative;
+            padding: 20px 20px 24px 20px;
+        }
+
+        .modal-content {
+            margin: 20px;
+        }
+
+        .instructions-modal.is-open { transform: translateY(0) scale(1); opacity: 1; }
+
+        .instructions-modal h2 {
+            margin-bottom: 8px;
+            color: #e53e3e;
+            font-size: 1.25rem;
+        }
+
+        .instructions-modal ul { margin: 5px 0 14px 1.1rem; color: #374151; }
+
+        .instructions-modal p.disclaimer { margin-top: 12px; color: #e53e3e; font-size: 0.95rem; display:flex; gap:8px; align-items:flex-start; }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: transparent;
+            border: none;
+            color: #374151;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .modal-close:focus { outline: 2px solid rgba(229,62,62,0.2); }
     </style>
 </head>
 <body>
@@ -272,6 +354,9 @@
         <div class="header">
             <h1>🌌 Kainaat Ambassador Session Generator</h1>
             <p>Create engaging space & science session plans powered by AI</p>
+            <div style="margin-top:12px;">
+                <button id="openInstructions" class="instructions-button" aria-haspopup="dialog" aria-controls="instructionsModal" aria-expanded="false" title="Open instructions">Instructions</button>
+            </div>
         </div>
 
         <div class="card">
@@ -369,7 +454,33 @@
             </div>
         </div>
     </div>
+
+    <!-- Instructions Modal -->
+    <div id="instructionsBackdrop" class="modal-backdrop" role="presentation" aria-hidden="true">
+        <div id="instructionsModal" class="instructions-modal" role="dialog" aria-modal="true" aria-labelledby="instructionsTitle" tabindex="-1">
+
+            <button class="modal-close" id="closeInstructions" aria-label="Close instructions">✕</button>
+            <div class = "modal-content">
+             <h2 id="instructionsTitle">Instructions</h2>
+                <div class = "points" style = "margin-bottom: 1rem;">
+                 <p><strong>Step 1:</strong> Select a YouTube video</p>
+                 <p><strong>Step 2:</strong> Choose Relevant Settings <i>i.e Audience, Session Duration</i></p>
+                 <p><strong>Step 3:</strong> Click "Generate Session Blueprint" to create a lesson plan</p>
+                 <p><strong>Step 4:</strong> Click "Generate Presentation Outline" to create a presentation structure based on the lesson plan</p>
+                 <p><strong>Step 5:</strong> Click "Generate Activity" to create a detailed activity idea based on your topic</p>
+                </div>
+             <p style = "text-decoration: underline; font-weight: bold; color: #e53e3e;">Additional Notes</p>
+             <ul>
+              <li>Use the copy buttons to copy outputs</li>
+              <li>Use the regenerate buttons to regenerate outputs</li>
+             </ul>
+             <p class="disclaimer">⚠️ Please Use This Tool As A Starting Point For Your Outreach Session. Feel Free To Improvise And Innovate The Outputs By Yourself</p>
+            </div>
+        </div>
+    </div>
+    <div id = "trans"></div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type = "py" src = "transcript.py" config ='{"packages":["datetime", "youtube_transcript_api"]}' target = "trans"></script>
 
     <script>
         
@@ -920,6 +1031,57 @@ Create a detailed HANDS-ON ACTIVITY PLAN for "${formData.video.title}".
 
         // Initialize on page load
         window.onload = init;
+    </script>
+
+    <script>
+        // Instructions modal behaviour
+        (function(){
+            const openBtn = document.getElementById('openInstructions');
+            const backdrop = document.getElementById('instructionsBackdrop');
+            const modal = document.getElementById('instructionsModal');
+            const closeBtn = document.getElementById('closeInstructions');
+            let previouslyFocused = null;
+
+            if (!openBtn || !backdrop || !modal || !closeBtn) return;
+
+            function openModal(){
+                previouslyFocused = document.activeElement;
+                backdrop.classList.add('is-open');
+                modal.classList.add('is-open');
+                backdrop.setAttribute('aria-hidden','false');
+                openBtn.setAttribute('aria-expanded','true');
+                // move focus into modal
+                modal.focus();
+                document.addEventListener('keydown', onKeyDown);
+            }
+
+            function closeModal(){
+                modal.classList.remove('is-open');
+                backdrop.classList.remove('is-open');
+                backdrop.setAttribute('aria-hidden','true');
+                openBtn.setAttribute('aria-expanded','false');
+                document.removeEventListener('keydown', onKeyDown);
+                // restore focus
+                try { previouslyFocused && previouslyFocused.focus(); } catch(e){}
+            }
+
+            function onKeyDown(e){
+                if (e.key === 'Escape') closeModal();
+                // basic focus trap: keep focus inside modal on Tab
+                if (e.key === 'Tab') {
+                    const focusable = modal.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])');
+                    if (!focusable.length) return;
+                    const first = focusable[0];
+                    const last = focusable[focusable.length -1];
+                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+            }
+
+            openBtn.addEventListener('click', openModal);
+            closeBtn.addEventListener('click', closeModal);
+            backdrop.addEventListener('click', function(e){ if (e.target === backdrop) closeModal(); });
+        })();
     </script>
 </body>
 </html>
